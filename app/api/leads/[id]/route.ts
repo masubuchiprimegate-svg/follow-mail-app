@@ -24,3 +24,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
     return jsonError(error);
   }
 }
+
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const supabase = getSupabaseAdmin();
+    const { error } = await supabase.from("leads").delete().eq("id", params.id);
+
+    if (error) {
+      return NextResponse.json({ error: formatSupabaseError("営業先の削除", error) }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      message: "営業先を削除しました。関連するメール下書きも削除されています。"
+    });
+  } catch (error) {
+    return jsonError(error);
+  }
+}

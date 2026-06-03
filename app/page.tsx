@@ -48,6 +48,7 @@ export default function Home() {
   const [isSavingLead, setIsSavingLead] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSavingOutlook, setIsSavingOutlook] = useState(false);
+  const [deletingLeadId, setDeletingLeadId] = useState<string>("");
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [message, setMessage] = useState("");
 
@@ -264,6 +265,41 @@ export default function Home() {
     }
   }
 
+  async function deleteLead(leadId: string) {
+    const targetLead = leads.find((lead) => lead.id === leadId);
+    const confirmed = window.confirm(
+      targetLead ? `${targetLead.company_name} を削除しますか？` : "この営業先を削除しますか？"
+    );
+
+    if (!confirmed) return;
+
+    setMessage("");
+    setDeletingLeadId(leadId);
+
+    try {
+      const response = await fetch(`/api/leads/${leadId}`, {
+        method: "DELETE"
+      });
+
+      if (!response.ok) {
+        setMessage(await getErrorMessage(response, "営業先の削除に失敗しました。"));
+        return;
+      }
+
+      setLeads((current) => current.filter((lead) => lead.id !== leadId));
+
+      if (selectedLeadId === leadId) {
+        setSelectedLeadId("");
+      }
+
+      setMessage("営業先を削除しました。関連するメール下書きも削除されています。");
+    } catch {
+      setMessage("営業先の削除に失敗しました。/api/leads/[id] に接続できません。開発サーバーが起動しているか確認してください。");
+    } finally {
+      setDeletingLeadId("");
+    }
+  }
+
   return (
     <main className="min-h-screen bg-mist">
       <header className="border-b border-line bg-white">
@@ -358,27 +394,41 @@ export default function Home() {
                 <p className="text-sm text-slate-600">まだ営業先が登録されていません。</p>
               ) : null}
               {leads.map((lead) => (
-                <button
+                <div
                   key={lead.id}
-                  className={`w-full border px-3 py-3 text-left transition ${
+                  className={`border transition ${
                     selectedLeadId === lead.id
                       ? "border-teal bg-teal/5"
                       : "border-line bg-white hover:border-slate-400"
                   }`}
-                  onClick={() => setSelectedLeadId(lead.id)}
-                  type="button"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-semibold text-ink">{lead.company_name}</p>
-                      <p className="mt-1 text-sm text-slate-600">{lead.contact_name} 様</p>
+                  <button
+                    className="w-full px-3 py-3 text-left"
+                    onClick={() => setSelectedLeadId(lead.id)}
+                    type="button"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-ink">{lead.company_name}</p>
+                        <p className="mt-1 text-sm text-slate-600">{lead.contact_name} 様</p>
+                      </div>
+                      <span className="shrink-0 border border-line px-2 py-1 text-xs text-slate-700">
+                        {statusLabels[lead.status]}
+                      </span>
                     </div>
-                    <span className="shrink-0 border border-line px-2 py-1 text-xs text-slate-700">
-                      {statusLabels[lead.status]}
-                    </span>
+                    <p className="mt-2 text-xs text-slate-500">{lead.exhibition_name}</p>
+                  </button>
+                  <div className="flex justify-end border-t border-line px-3 py-2">
+                    <button
+                      className="border border-coral px-3 py-1.5 text-xs font-semibold text-coral disabled:opacity-60"
+                      disabled={deletingLeadId === lead.id}
+                      onClick={() => void deleteLead(lead.id)}
+                      type="button"
+                    >
+                      {deletingLeadId === lead.id ? "削除中..." : "削除"}
+                    </button>
                   </div>
-                  <p className="mt-2 text-xs text-slate-500">{lead.exhibition_name}</p>
-                </button>
+                </div>
               ))}
             </div>
           </section>
